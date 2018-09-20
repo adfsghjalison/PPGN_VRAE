@@ -4,7 +4,7 @@ from utils import utils
 import numpy as np
 import os
 import sys
-
+from flags import BOS, EOS, UNK, DROPOUT
 
 
 
@@ -13,27 +13,26 @@ class vrnn():
     def __init__(self,args,sess):
         self.sess = sess
         self.word_embedding_dim = 300
-        self.num_epochs = 100
         self.num_steps = args.num_steps
         self.latent_dim = args.latent_dim
         self.sequence_length = args.sequence_length
         self.batch_size = args.batch_size
         self.saving_step = args.saving_step
+        self.printing_step = args.printing_step
         self.feed_previous = args.feed_previous
         self.model_dir = args.model_dir
         self.data_dir = args.data_dir
-        self.load_model = args.load
         self.lstm_length = [self.sequence_length+1]*self.batch_size
         self.utils = utils(args)
         self.vocab_size = len(self.utils.word_id_dict)
         self.KL_annealing = args.KL_annealing
 
-        self.EOS = 0
-        self.BOS = 1
+        self.BOS = BOS
+        self.EOS = EOS
         self.log_dir = os.path.join(self.model_dir,'log/')
         self.build_graph()
         
-        self.saver = tf.train.Saver(max_to_keep=2)
+        self.saver = tf.train.Saver(max_to_keep=5)
         self.model_path = os.path.join(self.model_dir,'model_{m_type}'.format(m_type='vrnn'))
 
     def build_graph(self):
@@ -55,15 +54,9 @@ class vrnn():
             self.embedding_placeholder = tf.placeholder(dtype=tf.float32, shape=(self.vocab_size-4,self.word_embedding_dim))
             init = tf.contrib.layers.xavier_initializer()
 
-            pretrained_word_embd  = tf.get_variable(
-                name="pretrained_word_embd",
-                shape=[self.vocab_size-4, self.word_embedding_dim],
-                initializer = init,
-                trainable = False)
-            self.embd_init = pretrained_word_embd.assign(self.embedding_placeholder)
 
-            word_vector_EOS_BOS = tf.get_variable(
-                name="word_vector_EOS_BOS",
+            word_vector_BOS_EOS = tf.get_variable(
+                name="word_vector_BOS_EOS",
                 shape=[2, self.word_embedding_dim],
                 initializer = init,
                 trainable = True)
@@ -74,8 +67,15 @@ class vrnn():
                 initializer = init,
                 trainable = True)
 
+            pretrained_word_embd  = tf.get_variable(
+                name="pretrained_word_embd",
+                shape=[self.vocab_size-4, self.word_embedding_dim],
+                initializer = init,
+                trainable = False)
+            self.embd_init = pretrained_word_embd.assign(self.embedding_placeholder)
+
             # word embedding
-            word_embedding_matrix = tf.concat([word_vector_EOS_BOS, pretrained_word_embd, word_vector_UNK_DROPOUT], 0)
+            word_embedding_matrix = tf.concat([word_vector_BOS_EOS, word_vector_UNK_DROPOUT, pretrained_word_embd], 0)
 
             # decoder output projection
             weight_output = tf.get_variable(
@@ -211,18 +211,20 @@ class vrnn():
         summary = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
         saving_step = self.saving_step
-        summary_step = saving_step/10
+        summary_step = self.printing_step
         cur_loss = 0.0
         cur_kl_loss = 0.0
-        
-        if self.load_model:
-            self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))
+       
+        ckpt = tf.train.get_checkpoint_state(self.model_dir)
+        if ckpt:
+            print('load model from:', self.model_dir)
+            self.saver.restore(self.sess, ckpt.model_checkpoint_path)
         else:
             self.sess.run(tf.global_variables_initializer())
             self.sess.run(self.embd_init,{self.embedding_placeholder:self.utils.load_word_embedding()})
         step = 0
         
-        for s,t in self.utils.train_data_generator(self.num_epochs):
+        for s,t in self.utils.train_data_generator():
             step += 1
             t_d = self.utils.word_drop_out(t)
             feed_dict = {
@@ -248,15 +250,15 @@ class vrnn():
         sentence = 'hi'
         print(sentence)
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))
-		
+    
         while(sentence):
-            sentence = sys.stdin.readline().lower()
+            sentence = sys.stdin.readline()
             sys.stdout.flush()
             input_sent_vec = self.utils.sent2id(sentence)
             #print(input_sent_vec)
-            sent_vec = np.zeros((self.batch_size,self.sequence_length),dtype=np.int32)
+            sent_vec = np.ones((self.batch_size,self.sequence_length),dtype=np.int32)
             sent_vec[0] = input_sent_vec
-            t = np.ones((self.batch_size,self.sequence_length),dtype=np.int32)
+            t = np.zeros((self.batch_size,self.sequence_length),dtype=np.int32)
             feed_dict = {
                     self.encoder_inputs:sent_vec,\
                     self.train_decoder_sentence:t
@@ -265,24 +267,29 @@ class vrnn():
             pred_sent = self.utils.id2sent(preds[0][0])
             print(pred_sent)   
             
-            
+
     def test(self):
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))        
         step = 0
         cur_loss = 0.0
         cur_kl_loss = 0.0
-        for s,t in self.utils.test_data_generator():
+        for s, sen in self.utils.test_data_generator():
             step += 1
-            t = np.ones((self.batch_size,self.sequence_length), dtype=np.int32)
+            t = np.zeros((self.batch_size,self.sequence_length), dtype=np.int32)
             t_d = s
             feed_dict = {
-                self.encoder_inputs:s,\
-                self.train_decoder_targets:t_d,\
-                self.train_decoder_sentence:t
+                self.encoder_inputs: s,\
+                self.train_decoder_targets: t_d,\
+                self.train_decoder_sentence: t
             }
-            loss,kl_loss = self.sess.run([self.loss, self.kl_loss], feed_dict)
+            preds, loss,kl_loss = self.sess.run([self.test_pred, self.loss, self.kl_loss], feed_dict)
             cur_loss += loss
             cur_kl_loss += kl_loss
+            for i in range(self.batch_size):
+              pred_s = self.utils.id2sent(preds[i])
+              print('    '+sen[i].strip() + '\n->  ' + pred_s)
             
         print('total loss: ' + str(cur_loss/step))
         print('kl divergence: ' + str(cur_kl_loss/step))
+
+
