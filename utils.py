@@ -2,6 +2,7 @@ import os
 import random
 import json
 import numpy as np
+from flags import BOS, EOS, UNK, DROPOUT
 
 def read_json(filename):
     with open(filename, 'r') as fp:
@@ -17,10 +18,10 @@ class utils():
         self.word_embd_path = args.word_embd_path
         self.sequence_length = args.sequence_length
         self.word_id_dict = read_json(args.dict_path)
-        self.unknown_id =  self.word_id_dict['__UNK__']
-        self.droptout_id = self.word_id_dict['__DROPOUT__']
-        self.EOS_id = 0
-        self.BOS_id = 1
+        self.BOS_id = BOS
+        self.EOS_id = EOS
+        self.unknown_id =  UNK
+        self.droptout_id = DROPOUT
 
         self.id_word_dict = [[]]*len(self.word_id_dict)
         print(len(self.id_word_dict))
@@ -37,11 +38,11 @@ class utils():
 
 
     def sent2id(self,sent,l=None):
-        sent_list = sent.strip().split()
-        vec = np.zeros((self.sequence_length),dtype=np.int32)
+        sent_list = sent.decode('utf-8').strip().split()
+        vec = np.ones((self.sequence_length),dtype=np.int32)
         sent_len = len(sent_list)
         unseen = 0
-        for i,word in enumerate(sent_list):
+        for i, word in enumerate(sent_list):
             if i==self.sequence_length:
                 break
             if word in self.word_id_dict:
@@ -49,7 +50,7 @@ class utils():
             else:
                 vec[i] = self.unknown_id
         if l:
-            return vec,sent_len
+            return vec, sent_len
         else:
             return vec
 
@@ -57,13 +58,15 @@ class utils():
     def id2sent(self,ids):
         word_list = []
         for i in ids:
+            if i == EOS:
+              break
             word_list.append(self.id_word_dict[i])
-        return ' '.join(word_list)
+        return ' '.join(word_list).encode('utf-8')
 
 
-    def train_data_generator(self,num_epos):
-        for _ in range(num_epos):
-            f = open(os.path.join(self.data_dir,'open_subtitles_train'),'r')
+    def train_data_generator(self):
+        while True:
+            f = open(os.path.join(self.data_dir,'source_train'),'r')
             data = f.readlines()
             random.shuffle(data)
 
@@ -79,19 +82,18 @@ class utils():
                         batch_s = [];batch_t = [];
 
     def test_data_generator(self):
-        f = open(os.path.join(self.data_dir,'open_subtitles_test'),'r')
+        f = open(os.path.join(self.data_dir,'source_test'),'r')
         data = f.readlines()
 
-        batch_s = [];batch_t = [];
+        batch_s = [];   batch_sen = []
         for i in range(len(data)):
-            s_sent,s_l = self.sent2id(data[i],1)
-            t_sent,t_l = self.sent2id(data[i],1)
-            if s_l<=30 and t_l<=30 and random.random()<0.8:
+            s_sent, s_l = self.sent2id(data[i], 1)
+            if s_l < self.sequence_length :
                 batch_s.append(s_sent)
-                batch_t.append(t_sent)
+                batch_sen.append(data[i])
                 if len(batch_s)== self.batch_size:
-                    yield batch_s,batch_t
-                    batch_s = [];batch_t = [];
+                    yield batch_s, batch_sen
+                    batch_s = [];   batch_sen = []
 
     def load_word_embedding(self):
         embd = []

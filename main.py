@@ -1,39 +1,19 @@
 import argparse
 import tensorflow as tf
 from model import vrnn
+from flags import FLAGS
 
-def parse():
-    parser = argparse.ArgumentParser(description="variational autoencoder")
-    parser.add_argument('-model_dir','--model_dir',default='model_dir',help='output model dir')
-    parser.add_argument('-dict_path','--dict_path',help='dictionary path')
-    parser.add_argument('-word_embd_path','--word_embd_path',help='word embedding path')
-    parser.add_argument('-batch_size','--batch_size',default=200,type=int,help='batch size')
-    parser.add_argument('-latent_dim','--latent_dim',default=500,type=int,help='laten size')
-    parser.add_argument('-data_dir','--data_dir',default='data_dir',help='data dir')
-    parser.add_argument('-saving_step','--saving_step',default=1000,type=int,help='saving step')
-    parser.add_argument('-num_steps','--num_steps',default=10000,type=int,help='number of steps')
-    parser.add_argument('-sequence_length','--sequence_length',default=15,type=int,help='sentence length')
-    parser.add_argument('-load','--load',action='store_true',help='whether load')
-    parser.add_argument('-train',action='store_true',help='whether train')
-    parser.add_argument('-stdin_test',action='store_true',help='whether stdin test')
-    parser.add_argument('-test',action='store_true',help='whether test')
-    parser.add_argument('-feed_previous',action='store_true',help='whether feed previous')
-    parser.add_argument('-KL_annealing',action='store_true',help='whether do KL annealing')
-    
-    args = parser.parse_args()
-    return args
-
-def run(args):
-    with tf.device('/gpu:0'):
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        model = vrnn(args,sess)
-        if args.train:
-            model.train()
-        if args.stdin_test:
-            model.stdin_test()
-        if args.test:
-            model.test()
+def run():
+#  with tf.device('/gpu:0'):
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+    model = vrnn(FLAGS, sess)
+    if FLAGS.mode == 'train':
+        model.train()
+    if FLAGS.mode == 'test':
+        model.test()
+    if FLAGS.mode == 'stdin_test':
+        model.stdin_test()
 
 if __name__ == '__main__':
-    args = parse()
-    run(args)
+    run()
+
