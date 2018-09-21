@@ -2,7 +2,7 @@ import tensorflow as tf
 
 tf.app.flags.DEFINE_string('mode','train', 'train / test / stdin')
 tf.app.flags.DEFINE_string('model_dir','model', 'output model dir')
-tf.app.flags.DEFINE_string('data_dir','data_sam', 'data dir')
+tf.app.flags.DEFINE_string('data_dir','data', 'data dir')
 tf.app.flags.DEFINE_string('feed_previous', True, 'whether feed previous')
 tf.app.flags.DEFINE_string('KL_annealing', True, 'whether do KL annealing')
 tf.app.flags.DEFINE_integer('batch_size', 200, 'batch size')
