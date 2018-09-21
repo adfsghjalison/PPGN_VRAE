@@ -11,7 +11,7 @@ def run():
         model.train()
     if FLAGS.mode == 'test':
         model.test()
-    if FLAGS.mode == 'stdin_test':
+    if FLAGS.mode == 'stdin':
         model.stdin_test()
 
 if __name__ == '__main__':

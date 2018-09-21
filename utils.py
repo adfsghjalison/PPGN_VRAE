@@ -1,6 +1,7 @@
 import os
 import random
 import json
+import jieba
 import numpy as np
 from flags import BOS, EOS, UNK, DROPOUT
 
@@ -14,14 +15,14 @@ class utils():
     def __init__(self,args):
         self.batch_size = args.batch_size
         self.data_dir = args.data_dir
-        self.dict_path = args.dict_path
-        self.word_embd_path = args.word_embd_path
+        self.word_embd_path = os.path.join(self.data_dir, 'word_embd')
         self.sequence_length = args.sequence_length
-        self.word_id_dict = read_json(args.dict_path)
+        self.word_id_dict = read_json(os.path.join(self.data_dir, 'dict'))
         self.BOS_id = BOS
         self.EOS_id = EOS
         self.unknown_id =  UNK
         self.droptout_id = DROPOUT
+        jieba.load_userdict(os.path.join(self.data_dir, 'word'))
 
         self.id_word_dict = [[]]*len(self.word_id_dict)
         print(len(self.id_word_dict))
@@ -36,9 +37,12 @@ class utils():
                     sents[i][j] = self.word_id_dict['__DROPOUT__']
         return sents
 
-
-    def sent2id(self,sent,l=None):
-        sent_list = sent.decode('utf-8').strip().split()
+    def sent2id(self, sent, l=None, sp=False):
+        sent = sent.decode('utf-8').strip()
+        if sp:
+          sent_list = list(jieba.cut(sent, cut_all=False))
+        else:
+          sent_list = sent.split()
         vec = np.ones((self.sequence_length),dtype=np.int32)
         sent_len = len(sent_list)
         unseen = 0

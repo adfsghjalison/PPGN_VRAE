@@ -25,7 +25,10 @@ class vrnn():
         self.lstm_length = [self.sequence_length+1]*self.batch_size
         self.utils = utils(args)
         self.vocab_size = len(self.utils.word_id_dict)
-        self.KL_annealing = args.KL_annealing
+        if args.mode == 'train':
+          self.KL_annealing = args.KL_annealing
+        else:
+          self.KL_annealing = False
 
         self.BOS = BOS
         self.EOS = EOS
@@ -247,14 +250,15 @@ class vrnn():
                 
                 
     def stdin_test(self):
-        sentence = 'hi'
+        sentence = 'Hi~'
         print(sentence)
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))
     
         while(sentence):
+            print('')
             sentence = sys.stdin.readline()
             sys.stdout.flush()
-            input_sent_vec = self.utils.sent2id(sentence)
+            input_sent_vec = self.utils.sent2id(sentence, sp=True)
             #print(input_sent_vec)
             sent_vec = np.ones((self.batch_size,self.sequence_length),dtype=np.int32)
             sent_vec[0] = input_sent_vec
@@ -265,7 +269,7 @@ class vrnn():
             }
             preds = self.sess.run([self.test_pred],feed_dict)
             pred_sent = self.utils.id2sent(preds[0][0])
-            print(pred_sent)   
+            print('->  '+pred_sent)   
             
 
     def test(self):
@@ -287,7 +291,7 @@ class vrnn():
             cur_kl_loss += kl_loss
             for i in range(self.batch_size):
               pred_s = self.utils.id2sent(preds[i])
-              print('    '+sen[i].strip() + '\n->  ' + pred_s)
+              print('\n    '+sen[i].strip() + '\n->  ' + pred_s)
             
         print('total loss: ' + str(cur_loss/step))
         print('kl divergence: ' + str(cur_kl_loss/step))
