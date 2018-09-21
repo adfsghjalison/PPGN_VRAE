@@ -10,19 +10,19 @@ python main.py --mode stdin
 All settings in flags
 ## data
 [data_dir]/:  
-    source_train  
+ * source_train  
+   * one chinese sentence a line  
+   * splitted  
+ * source_test  
         one chinese sentence a line  
         splitted  
-    source_test  
-        one chinese sentence a line  
-        splitted  
-    dict  
+ * dict  
         json file (word to id)  
         {"word0": 0, "word1": 1, ...}  
-    word  
+ * word  
         all words  
         one word a line  
-    word_embd  
+ * word_embd  
         all word embeddings (in the same order with id in dict)  
         one word embedding a line  
         "word" d0 d1 ... dn  
