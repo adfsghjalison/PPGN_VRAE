@@ -1,4 +1,4 @@
-# VAE_RNN
+# VRAE_PPGN
 ## train
 python main.py
 ## test_file
