@@ -14,19 +14,19 @@ All settings in flags
    * one chinese sentence a line  
    * splitted  
  * source_test  
-        one chinese sentence a line  
-        splitted  
+   * one chinese sentence a line  
+   * splitted  
  * dict  
-        json file (word to id)  
-        {"word0": 0, "word1": 1, ...}  
+   * json file (word to id)  
+   * {"word0": 0, "word1": 1, ...}  
  * word  
-        all words  
-        one word a line  
+   * all words  
+   * one word a line  
  * word_embd  
-        all word embeddings (in the same order with id in dict)  
-        one word embedding a line  
-        "word" d0 d1 ... dn  
-        the number of dimension in model.py  
+   * all word embeddings (in the same order with id in dict)  
+   * one word embedding a line  
+   * "word" d0 d1 ... dn  
+   * the number of dimension in model.py  
 ## Environment
 python2.7  
 tensorflow-gpu(1.1.0)  
