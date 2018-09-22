@@ -38,6 +38,9 @@ class vrnn():
         self.saver = tf.train.Saver(max_to_keep=5)
         self.model_path = os.path.join(self.model_dir,'model_{m_type}'.format(m_type='vrnn'))
 
+        for i in self.get_var_list():
+          print i.op.name, i
+
     def build_graph(self):
         print('starting building graph')
         
@@ -296,4 +299,5 @@ class vrnn():
         print('total loss: ' + str(cur_loss/step))
         print('kl divergence: ' + str(cur_kl_loss/step))
 
-
+    def get_var_list(self):
+            return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='decoder') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='embedding')
