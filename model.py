@@ -253,9 +253,9 @@ class vrnn():
                 
                 
     def stdin_test(self):
+        self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))
         sentence = 'Hi~'
         print(sentence)
-        self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))
     
         while(sentence):
             print('')
