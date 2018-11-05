@@ -230,20 +230,24 @@ class vrnn():
             self.sess.run(self.embd_init,{self.embedding_placeholder:self.utils.load_word_embedding()})
         step = 0
         
-        for s,t in self.utils.train_data_generator():
+        for idx, sen in self.utils.train_data_generator():
             step += 1
-            t_d = self.utils.word_drop_out(t)
+            t_d = self.utils.word_drop_out(idx)
             feed_dict = {
-                self.encoder_inputs:s,\
-                self.train_decoder_sentence:t_d,\
-                self.train_decoder_targets:t, \
-                self.step:step #KL weight
+                self.encoder_inputs: idx,\
+                self.train_decoder_sentence: t_d,\
+                self.train_decoder_targets: idx, \
+                self.step: step #KL weight
             }
-            _,loss,kl_loss = self.sess.run([self.train_op, self.loss, self.kl_loss], feed_dict)
+            preds, loss, kl_loss, _ = self.sess.run([self.test_pred, self.loss, self.kl_loss, self.train_op], feed_dict)
             cur_loss += loss
             cur_kl_loss += kl_loss
             if step%(summary_step)==0:
-                print('{step}: total_loss: {loss} kl: {kl_loss}'.format(step=step,loss=cur_loss/summary_step, kl_loss=cur_kl_loss/summary_step))
+                print('original :')
+                print(sen[0])
+                print('pred:')
+                print(self.utils.id2sent(preds[0]))
+                print('\n{step}: total_loss: {loss} kl: {kl_loss}\n'.format(step=step,loss=cur_loss/summary_step, kl_loss=cur_kl_loss/summary_step))
                 cur_loss = 0.0
                 cut_kl_loss = 0.0
             if step%saving_step==0:
@@ -275,7 +279,7 @@ class vrnn():
             print('->  '+pred_sent)   
             
 
-    def test(self):
+    def val(self):
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))        
         step = 0
         cur_loss = 0.0
@@ -289,15 +293,19 @@ class vrnn():
                 self.train_decoder_targets: t_d,\
                 self.train_decoder_sentence: t
             }
-            preds, loss,kl_loss = self.sess.run([self.test_pred, self.loss, self.kl_loss], feed_dict)
+            preds, loss, kl_loss = self.sess.run([self.test_pred, self.loss, self.kl_loss], feed_dict)
             cur_loss += loss
             cur_kl_loss += kl_loss
             for i in range(self.batch_size):
-              pred_s = self.utils.id2sent(preds[i])
-              print('\n    '+sen[i].strip() + '\n->  ' + pred_s)
+              print('original :')
+              print(sen[i])
+              print('pred:')
+              print(self.utils.id2sent(preds[i]))
+              print("")
             
         print('total loss: ' + str(cur_loss/step))
         print('kl divergence: ' + str(cur_kl_loss/step))
 
     def get_var_list(self):
             return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='decoder') + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='embedding')
+

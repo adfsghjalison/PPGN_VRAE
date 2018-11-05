@@ -9,8 +9,8 @@ def run():
     model = vrnn(FLAGS, sess)
     if FLAGS.mode == 'train':
         model.train()
-    if FLAGS.mode == 'test':
-        model.test()
+    if FLAGS.mode == 'val':
+        model.val()
     if FLAGS.mode == 'stdin':
         model.stdin_test()
 

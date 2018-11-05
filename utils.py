@@ -15,7 +15,7 @@ class utils():
     def __init__(self,args):
         self.batch_size = args.batch_size
         self.data_dir = args.data_dir
-        self.word_embd_path = os.path.join(self.data_dir, 'word_embd')
+        self.word_embd_path = os.path.join(self.data_dir, 'word_vec')
         self.sequence_length = args.sequence_length
         self.word_id_dict = read_json(os.path.join(self.data_dir, 'dict'))
         self.BOS_id = BOS
@@ -33,7 +33,7 @@ class utils():
         sents = np.array(sents)
         for i in range(len(sents)):
             for j in range(len(sents[i])):
-                if random.random()<=rate and sents[i][j]!=0:
+                if random.random() <= rate and sents[i][j] != 0:
                     sents[i][j] = self.word_id_dict['__DROPOUT__']
         return sents
 
@@ -74,27 +74,28 @@ class utils():
             data = f.readlines()
             random.shuffle(data)
 
-            batch_s = [];batch_t = [];
-            for i in range(len(data)):
-                s_sent,s_l = self.sent2id(data[i],1)
-                t_sent,t_l = self.sent2id(data[i],1)
-                if s_l<=30 and t_l<=30 and random.random()<0.8:
-                    batch_s.append(s_sent)
-                    batch_t.append(t_sent)
-                    if len(batch_s)== self.batch_size:
-                        yield batch_s,batch_t
-                        batch_s = [];batch_t = [];
+            batch_idx = []; batch_sen = []
+            for l in data:
+                l = l.strip().split(' +++$+++ ')[1]
+                idx, s_l = self.sent2id(l, 1)
+                if s_l <= self.sequence_length and random.random() < 0.8:
+                    batch_idx.append(idx)
+                    batch_sen.append(l)
+                    if len(batch_idx) == self.batch_size:
+                        yield batch_idx, batch_sen
+                        batch_idx = []; batch_sen = []
 
     def test_data_generator(self):
         f = open(os.path.join(self.data_dir,'source_test'),'r')
         data = f.readlines()
 
         batch_s = [];   batch_sen = []
-        for i in range(len(data)):
-            s_sent, s_l = self.sent2id(data[i], 1)
-            if s_l < self.sequence_length :
+        for l in data:
+            l = l.strip().split(' +++$+++ ')[1]
+            s_sent, s_l = self.sent2id(l, 1)
+            if s_l <= self.sequence_length :
                 batch_s.append(s_sent)
-                batch_sen.append(data[i])
+                batch_sen.append(l)
                 if len(batch_s)== self.batch_size:
                     yield batch_s, batch_sen
                     batch_s = [];   batch_sen = []
