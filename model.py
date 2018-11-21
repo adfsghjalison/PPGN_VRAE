@@ -16,17 +16,20 @@ class vrnn():
         self.num_steps = args.num_steps
         self.latent_dim = args.latent_dim
         self.sequence_length = args.sequence_length
+        self.output = args.output
         self.batch_size = args.batch_size
         self.saving_step = args.saving_step
         self.printing_step = args.printing_step
         self.feed_previous = args.feed_previous
         self.model_dir = args.model_dir
         self.data_dir = args.data_dir
+        self.load = args.load
         self.lstm_length = [self.sequence_length+1]*self.batch_size
         self.utils = utils(args)
         self.vocab_size = len(self.utils.word_id_dict)
+        self.word_dp = args.word_dp
         if args.mode == 'train':
-          self.KL_annealing = args.KL_annealing
+          self.KL_annealing = args.kl
         else:
           self.KL_annealing = False
 
@@ -37,9 +40,6 @@ class vrnn():
         
         self.saver = tf.train.Saver(max_to_keep=5)
         self.model_path = os.path.join(self.model_dir,'model_{m_type}'.format(m_type='vrnn'))
-
-        for i in self.get_var_list():
-          print i.op.name, i
 
     def build_graph(self):
         print('starting building graph')
@@ -220,19 +220,20 @@ class vrnn():
         summary_step = self.printing_step
         cur_loss = 0.0
         cur_kl_loss = 0.0
+        step = 0
        
         ckpt = tf.train.get_checkpoint_state(self.model_dir)
         if ckpt:
-            print('load model from:', self.model_dir)
+            print('load model from:', ckpt.model_checkpoint_path)
             self.saver.restore(self.sess, ckpt.model_checkpoint_path)
+            step = int(ckpt.model_checkpoint_path.split('-')[-1])
         else:
             self.sess.run(tf.global_variables_initializer())
             self.sess.run(self.embd_init,{self.embedding_placeholder:self.utils.load_word_embedding()})
-        step = 0
         
         for idx, sen in self.utils.train_data_generator():
             step += 1
-            t_d = self.utils.word_drop_out(idx)
+            t_d = self.utils.word_drop_out(idx, self.word_dp)
             feed_dict = {
                 self.encoder_inputs: idx,\
                 self.train_decoder_sentence: t_d,\
@@ -253,14 +254,12 @@ class vrnn():
             if step%saving_step==0:
                 self.saver.save(self.sess, self.model_path, global_step=step)
             if step>=self.num_steps:
-                break
-                
+                break  
                 
     def stdin_test(self):
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))
         sentence = 'Hi~'
         print(sentence)
-    
         while(sentence):
             print('')
             sentence = sys.stdin.readline()
@@ -280,10 +279,16 @@ class vrnn():
             
 
     def val(self):
-        self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))        
+        if self.load != '':
+          print('load model from {} ... '.format(self.load))
+          self.saver.restore(self.sess, self.load)
+        else:
+          print('load model from {} ... '.format(tf.train.latest_checkpoint(self.model_dir)))
+          self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_dir))        
         step = 0
         cur_loss = 0.0
         cur_kl_loss = 0.0
+        f = open(self.output, 'w')
         for s, sen in self.utils.test_data_generator():
             step += 1
             t = np.zeros((self.batch_size,self.sequence_length), dtype=np.int32)
@@ -297,12 +302,11 @@ class vrnn():
             cur_loss += loss
             cur_kl_loss += kl_loss
             for i in range(self.batch_size):
-              print('original :')
-              print(sen[i])
-              print('pred:')
-              print(self.utils.id2sent(preds[i]))
-              print("")
-            
+              #print("{} | {}".format(''.join(sen[i].split()), self.utils.id2sent(preds[i])))
+              f.write("{} | {}\n".format(''.join(sen[i].split()), self.utils.id2sent(preds[i])))
+        f.write('Total Loss: {}\n'.format(cur_loss/step))
+        f.write('KL Divergence: {}\n'.format(cur_kl_loss/step))
+           
         print('total loss: ' + str(cur_loss/step))
         print('kl divergence: ' + str(cur_kl_loss/step))
 

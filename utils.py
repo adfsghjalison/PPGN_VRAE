@@ -29,7 +29,7 @@ class utils():
         for word in self.word_id_dict:
             self.id_word_dict[self.word_id_dict[word]] = word
 
-    def word_drop_out(self,sents,rate=0.3):
+    def word_drop_out(self, sents, rate=0.3):
         sents = np.array(sents)
         for i in range(len(sents)):
             for j in range(len(sents[i])):
@@ -65,7 +65,7 @@ class utils():
             if i == EOS:
               break
             word_list.append(self.id_word_dict[i])
-        return ' '.join(word_list).encode('utf-8')
+        return ''.join(word_list).encode('utf-8')
 
 
     def train_data_generator(self):
