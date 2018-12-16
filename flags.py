@@ -1,7 +1,7 @@
 import tensorflow as tf
 import os
 
-tf.app.flags.DEFINE_string('mode','train', 'train / val / stdin')
+tf.app.flags.DEFINE_string('mode','train', 'train / val / test')
 tf.app.flags.DEFINE_string('model_dir','model', 'output model dir')
 tf.app.flags.DEFINE_string('data_dir','data', 'data dir')
 #tf.app.flags.DEFINE_string('data_name','NLPCC', 'data dir')
